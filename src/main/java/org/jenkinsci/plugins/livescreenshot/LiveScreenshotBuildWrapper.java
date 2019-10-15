@@ -1,22 +1,35 @@
+/**
+ * Copyright 2013 Dr. Stefan Schimanski <sts@1stein.org>
+ * Copyright 2017 Harald Sitter <sitter@kde.org>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 package org.jenkinsci.plugins.livescreenshot;
 
+import hudson.EnvVars;
 import hudson.Extension;
+import hudson.FilePath;
 import hudson.Launcher;
-import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
-import hudson.model.BuildListener;
-import hudson.tasks.BuildWrapper;
+import hudson.model.Run;
+import hudson.model.TaskListener;
 import hudson.tasks.BuildWrapperDescriptor;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-
-import java.io.IOException;
-import java.io.OutputStream;
-
+import jenkins.tasks.SimpleBuildWrapper;
 import org.kohsuke.stapler.DataBoundConstructor;
 
-public class LiveScreenshotBuildWrapper extends BuildWrapper {
+public class LiveScreenshotBuildWrapper extends SimpleBuildWrapper {
 	private final String fullscreenFilename;
 	private final String thumbnailFilename;
 	
@@ -35,53 +48,10 @@ public class LiveScreenshotBuildWrapper extends BuildWrapper {
 	}
 
 	@Override
-	public Environment setUp(AbstractBuild build, Launcher launcher,
-			BuildListener listener) throws IOException, InterruptedException {
-
-		// add action to job
-		final LiveScreenshotAction action = new LiveScreenshotAction(build, 
-				this.fullscreenFilename, this.thumbnailFilename);
+	public void setUp(SimpleBuildWrapper.Context context, Run<?,?> build, FilePath workspace, Launcher launcher, TaskListener listener, EnvVars initialEnvironment) {
+		final LiveScreenshotAction action = new LiveScreenshotAction(build, workspace, this.fullscreenFilename, this.thumbnailFilename);
 		build.addAction(action);
-
-		// copy screenshots to artifact dir on finish, because the workspace
-		// might be reused by another build.
-		return new Environment() {
-			@Override
-			public boolean tearDown(AbstractBuild build, BuildListener listener)
-					throws IOException, InterruptedException {
-				
-				// create artifacts directory
-				String path = build.getArtifactsDir().getCanonicalPath() + "/screenshots";
-				File screenshotDir = new File(path);
-				screenshotDir.mkdirs();
-				
-				// store kvmtest.png as artifacts
-				try {
-					byte[] bytes = action.liveScreenshot(fullscreenFilename);
-					if (bytes != null) {
-						OutputStream os = new FileOutputStream(path + "/" + fullscreenFilename);
-						os.write(bytes);
-						os.close();
-					}
-				}
-				catch (IOException e) {
-				}
-				
-				// store kvmtest-thumb.png as artifacts
-				try {
-					byte[] bytes = action.liveScreenshot(thumbnailFilename);
-					if (bytes != null) {
-						OutputStream os = new FileOutputStream(path + "/" + thumbnailFilename);
-						os.write(bytes);
-						os.close();
-					}
-				}
-				catch (IOException e) {
-				}
-				
-				return true;
-			}
-		};
+		context.setDisposer(new LiveScreenshotDisposer(fullscreenFilename, thumbnailFilename));
 	}
 
 	@Extension

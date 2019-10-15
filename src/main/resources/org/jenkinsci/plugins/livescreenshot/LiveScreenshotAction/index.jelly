@@ -1,3 +1,4 @@
+<?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout">
 	<j:set var="build" value="${it.build}" />
 	<l:layout title="${build} Screenshot" norefresh="false">

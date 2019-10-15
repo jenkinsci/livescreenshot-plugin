@@ -1,3 +1,4 @@
+<?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core">
-    <td>${it.getScreenshots(job)}</td>
+    <td><j:out value="${it.getScreenshots(job)}"/></td>
 </j:jelly>
